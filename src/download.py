@@ -9,6 +9,8 @@ base_path = os.path.dirname(base_path)
 data_path = os.path.join(base_path, 'data')
 src_path = os.path.join(base_path, 'src')
 
+if not os.path.exists(data_path): os.mkdir(data_path)
+
 for url in ['https://hpc.nih.gov/~Jiang_Lab/CIDE/data_open.tar.gz']:
     f = os.path.basename(url.rstrip('/'))
     
