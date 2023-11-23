@@ -11,8 +11,6 @@ base_path = pathlib.Path(__file__).parent.absolute()
 base_path = os.path.dirname(base_path)
 data_path = os.path.join(base_path, 'data')
 input_path = os.path.join(data_path, 'data_open')
-output_path = os.path.join(data_path, 'output')
-
 
 lst_survival = []
 
