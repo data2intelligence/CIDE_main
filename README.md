@@ -1,4 +1,3 @@
-<base target="_blank">
 Example code of computing associations between gene values and clinical outcomes across CIDE cohorts.    
 
 # Pre-requisites:  
