@@ -26,17 +26,6 @@ def load_survival_list(data_type):
         ['Pancreatic_Nivolumab_Padron2022', 'OS_Sotiga+Chemo'],
         ['Pancreatic_Nivolumab_Padron2022', 'PFS_Sotiga+Chemo'],
         
-        
-        ['Pancreatic_Nivolumab_Padron2022.Liver', 'OS_Nivo+Chemo'],
-        ['Pancreatic_Nivolumab_Padron2022.Liver', 'PFS_Nivo+Chemo'],
-        
-        ['Pancreatic_Nivolumab_Padron2022.Liver', 'OS_Nivo+Sotiga+Chemo'],
-        ['Pancreatic_Nivolumab_Padron2022.Liver', 'PFS_Nivo+Sotiga+Chemo'],
-        
-        ['Pancreatic_Nivolumab_Padron2022.Liver', 'OS_Sotiga+Chemo'],
-        ['Pancreatic_Nivolumab_Padron2022.Liver', 'PFS_Sotiga+Chemo'],
-        
-        
         ['NSCLC_PD1orPDL1_Jung2019', 'PFS'],
         
         ['Melanoma_Ipilimumab_VanAllen2015', 'OS'],
@@ -49,18 +38,6 @@ def load_survival_list(data_type):
         
         ['Melanoma_Nivolumab_Riaz2017', 'OS_Prog'],
         ['Melanoma_Nivolumab_Riaz2017', 'PFS_Prog'],    
-        
-        ['Melanoma_Nivolumab_Riaz2017.On', 'OS_Naive'],
-        ['Melanoma_Nivolumab_Riaz2017.On', 'PFS_Naive'],
-        
-        ['Melanoma_Nivolumab_Riaz2017.On', 'OS_Prog'],
-        ['Melanoma_Nivolumab_Riaz2017.On', 'PFS_Prog'],    
-        
-        ['Melanoma_Nivolumab_Riaz2017.Diff', 'OS_Naive'],
-        ['Melanoma_Nivolumab_Riaz2017.Diff', 'PFS_Naive'],
-        
-        ['Melanoma_Nivolumab_Riaz2017.Diff', 'OS_Prog'],
-        ['Melanoma_Nivolumab_Riaz2017.Diff', 'PFS_Prog'],    
         
         ['Melanoma_PD1_Gide2019', 'OS'],
         ['Melanoma_PD1_Gide2019', 'PFS'],
@@ -93,7 +70,6 @@ def load_survival_list(data_type):
         ['mRCC_Sunitinib_McDermott2018', 'PFS'],
         
         ['Melanoma_CTLA4_Snyder2014', 'OS'],
-        ['Melanoma_CTLA4_Snyder2014.Post', 'OS'],
         
         ['Melanoma_ACT_Lauss2017', 'OS'],
         ['Melanoma_ACT_Lauss2017', 'PFS'],
@@ -127,6 +103,15 @@ def load_survival_list(data_type):
         
         ['CCRCC_ICB_Miao2018', 'PFS'],
         ['CCRCC_ICB_Miao2018', 'OS'],
+        
+        ['Salivary_ICB_Vos2023', 'PFS'],
+        
+        ['SCLC_Atezolizumab_Nabet2024', 'OS'],
+        ['SCLC_Atezolizumab_Nabet2024', 'PFS'],
+        
+        ['SCLC_Placebo_Nabet2024', 'OS'],
+        ['SCLC_Placebo_Nabet2024', 'PFS'],
+        
         
         # partial data
         ['PanCancer_PD1_Prat2017', 'PFS'],
@@ -177,15 +162,19 @@ def load_response_list(data_type):
     
     ################################################################
     # with binary outcome only
+    fprefix = os.path.join(input_path, '*', 'Breast_Durvalumab+Olaparib_Pusztai2021')
+    lst.append(['Breast_Durvalumab+Olaparib_Pusztai2021', fprefix, 'response'])
+    
+    fprefix = os.path.join(input_path, '*', 'Breast_Pembrolizumab_Wolf2022')
+    
+    for subtype in ['Basal', 'Luminal']:
+        lst.append(['Breast_Pembrolizumab_Wolf2022.' + subtype, fprefix, 'response_' + subtype])
+    
     fprefix = os.path.join(input_path, '*', 'Esophageal_Atezolizumab_VanDenEnde2021')
     lst.append(['Esophageal_Atezolizumab_VanDenEnde2021', fprefix, 'response'])
-    lst.append(['Esophageal_Atezolizumab_VanDenEnde2021.On', fprefix + '.On', 'response'])
-    lst.append(['Esophageal_Atezolizumab_VanDenEnde2021.Diff', fprefix + '.Diff', 'response'])
     
     fprefix = os.path.join(input_path, '*', 'HeadNeck_Pembrolizumab_Uppaluri2020')
     lst.append(['HeadNeck_Pembrolizumab_Uppaluri2020', fprefix, 'response'])
-    lst.append(['HeadNeck_Pembrolizumab_Uppaluri2020.Post', fprefix + '.Post', 'response'])
-    lst.append(['HeadNeck_Pembrolizumab_Uppaluri2020.Diff', fprefix + '.Diff', 'response'])
     
     fprefix = os.path.join(input_path, '*', 'NSCLC_Pembrolizumab_Lee2021')
     lst.append(['NSCLC_Pembrolizumab_Lee2021', fprefix, 'response'])
@@ -211,6 +200,17 @@ def load_response_list(data_type):
         data = glob(data)
         
         if len(data) == 0: continue
+        
+        if len(data) > 1:
+            p = response_type.split('_').pop()
+            
+            lst = []
+            
+            for f in data:
+                if f.find(p) >= 0:
+                    lst.append(f)
+            
+            data = lst
         
         assert len(data) == 1
         data = data.pop()
@@ -254,7 +254,6 @@ def load_RECIST_list(data_type):
         data = data.pop()
         
         fprefix = re.sub('\.' + data_type + '\.gz$', '', data)
-        
         
         clinical = os.path.join(os.path.dirname(fprefix), title.split('.')[0] + '.' + response_type)
         assert os.path.exists(clinical)
