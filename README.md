@@ -15,6 +15,6 @@ Run "./run.py" to finish the analysis for all cohorts with binary or RECIST outc
   
 # Step 3: Analysis for survival outcomes  
 Run "./run.py inx 66" where inx is a number between 0 and 66 to compute the Cox-PH regressions. If you also include restricted datasets, please use the total number of cohorts (66 + number of restricted cohorts).  
-Instead of using Python, we used R for Cox-PH regression as we found that R implementation of Cox-PH is more stable. This is a computational intensive step, because we use a sliding-value approach to find the best cutoff for Kaplan-Meier plots, thus involving lots of Cox-PH regressions. We used the NIH high performance cluster (HPC) for parallel computation as "./hpc_submit.py 69". You may re-write this file for your local HPC.
+Instead of using Python, we used R for Cox-PH regression as we found that R implementation of Cox-PH is more stable. This is a computational intensive step, because we use a sliding-value approach to find the best cutoff for Kaplan-Meier plots, thus involving lots of Cox-PH regressions. We used the NIH high performance cluster (HPC) for parallel computation as "./hpc_submit.py 66". You may re-write this file for your local HPC.
 
 The output will be available in each cohort folder, named as [cohort name].[data type].response[endpoint type].    
