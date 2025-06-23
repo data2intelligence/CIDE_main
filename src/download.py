@@ -11,6 +11,7 @@ src_path = os.path.join(base_path, 'src')
 
 if not os.path.exists(data_path): os.mkdir(data_path)
 
+# TODO: download this from the Zenodo
 for url in ['https://hpc.nih.gov/~Jiang_Lab/CIDE/data_open.tar.gz']:
     f = os.path.basename(url.rstrip('/'))
     

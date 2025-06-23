@@ -1,6 +1,8 @@
 suppressPackageStartupMessages(library(survival))
 suppressPackageStartupMessages(library(Hmisc))
 
+penalty = 1e-3
+
 readmat = function(mat, flag)
 {
   mat = as.matrix(read.table(mat, sep='\t', header=T, check.names=F, quote=NULL))
@@ -14,7 +16,6 @@ readmat = function(mat, flag)
     return (mat)
   }
 }
-
 
 writemat = function(result, output)
 {
@@ -31,25 +32,34 @@ CoxPH_best_separation = function(X, Y, margin, NSTEP)
   # part 1: continuous regression
   errflag = F
   
+  # still keep warning results below
+  X = as.matrix(X)
+  
   coxph.fit = tryCatch(
-    coxph(Y~., data=X),
+    #coxph(Y~., data=X),
+    coxph(Y~ridge(X, theta=penalty)),
     
     error = function(e){
       errflag <<- T
-      },
-    
-    warning = function(w){
-      errflag <<- T
       }
     )
-
+  
+  #warning = function(w){
+  #  errflag <<- T
+  #}
+  
   if(errflag) return (NA)
   
   n_r = nrow(X)
   n_c = ncol(X)
   
-  arr_result = summary(coxph.fit)$coef[n_c,]
+  arr_result = summary(coxph.fit)$coef
+  rownames(arr_result) = colnames(X)
   
+  z = arr_result[, 'coef']/arr_result[, 'se(coef)']
+  arr_result = cbind(arr_result, z)
+  
+  arr_result = arr_result[n_c,]
   if(is.na(arr_result["z"])) return (NA)
   
   # no need to find optimal threshold
@@ -74,13 +84,18 @@ CoxPH_best_separation = function(X, Y, margin, NSTEP)
     
     errflag = F
     coxph.fit = tryCatch(
-      coxph(Y~., data=X),
-      error = function(e) errflag <<- T,
-      warning = function(w) errflag <<- T)
-    
+      #coxph(Y~., data=X),
+      coxph(Y~ridge(X, theta=penalty)),
+      error = function(e) errflag <<- T
+      )
+    # warning = function(w) errflag <<- T
     if(errflag) next
     
-    z = summary(coxph.fit)$coef[n_c, "z"]
+    #z = summary(coxph.fit)$coef[n_c, "z"]
+    
+    r_temp = summary(coxph.fit)$coef[n_c,]
+    z = r_temp["coef"] / r_temp["se(coef)"]
+    
     if(is.na(z)) next
     
     if (is.na(zscore_opt)){

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 import os, sys, pathlib, re, pandas, numpy, warnings
 import statsmodels.api as sm
+import hashlib
+import CytoSig
+import data_significance
+import sklearn.metrics as metrics
 
 from scipy import stats
 from glob import glob
@@ -23,8 +27,17 @@ def load_survival_list(data_type):
         ['Pancreatic_Nivolumab_Padron2022', 'OS_Nivo+Sotiga+Chemo'],
         ['Pancreatic_Nivolumab_Padron2022', 'PFS_Nivo+Sotiga+Chemo'],
         
-        ['Pancreatic_Nivolumab_Padron2022', 'OS_Sotiga+Chemo'],
-        ['Pancreatic_Nivolumab_Padron2022', 'PFS_Sotiga+Chemo'],
+        #['Pancreatic_Nivolumab_Padron2022', 'OS_Sotiga+Chemo'],
+        #['Pancreatic_Nivolumab_Padron2022', 'PFS_Sotiga+Chemo'],
+        
+        ['Pancreatic_Nivolumab_Padron2022.Liver', 'OS_Nivo+Chemo'],
+        ['Pancreatic_Nivolumab_Padron2022.Liver', 'PFS_Nivo+Chemo'],
+        
+        ['Pancreatic_Nivolumab_Padron2022.Liver', 'OS_Nivo+Sotiga+Chemo'],
+        ['Pancreatic_Nivolumab_Padron2022.Liver', 'PFS_Nivo+Sotiga+Chemo'],
+        
+        ['Pancreatic_Nivolumab_Padron2022.Liver', 'OS_Sotiga+Chemo'],
+        ['Pancreatic_Nivolumab_Padron2022.Liver', 'PFS_Sotiga+Chemo'],
         
         ['NSCLC_PD1orPDL1_Jung2019', 'PFS'],
         
@@ -38,6 +51,18 @@ def load_survival_list(data_type):
         
         ['Melanoma_Nivolumab_Riaz2017', 'OS_Prog'],
         ['Melanoma_Nivolumab_Riaz2017', 'PFS_Prog'],    
+        
+        ['Melanoma_Nivolumab_Riaz2017.On', 'OS_Naive'],
+        ['Melanoma_Nivolumab_Riaz2017.On', 'PFS_Naive'],
+        
+        ['Melanoma_Nivolumab_Riaz2017.On', 'OS_Prog'],
+        ['Melanoma_Nivolumab_Riaz2017.On', 'PFS_Prog'],    
+        
+        ['Melanoma_Nivolumab_Riaz2017.Diff', 'OS_Naive'],
+        ['Melanoma_Nivolumab_Riaz2017.Diff', 'PFS_Naive'],
+        
+        ['Melanoma_Nivolumab_Riaz2017.Diff', 'OS_Prog'],
+        ['Melanoma_Nivolumab_Riaz2017.Diff', 'PFS_Prog'],    
         
         ['Melanoma_PD1_Gide2019', 'OS'],
         ['Melanoma_PD1_Gide2019', 'PFS'],
@@ -70,6 +95,7 @@ def load_survival_list(data_type):
         ['mRCC_Sunitinib_McDermott2018', 'PFS'],
         
         ['Melanoma_CTLA4_Snyder2014', 'OS'],
+        ['Melanoma_CTLA4_Snyder2014.Post', 'OS'],
         
         ['Melanoma_ACT_Lauss2017', 'OS'],
         ['Melanoma_ACT_Lauss2017', 'PFS'],
@@ -84,7 +110,6 @@ def load_survival_list(data_type):
         ['Hepatocellular_Sorafenib_Finn2020', 'PFS'],
         
         ['GBM_PD1_Zhao2019', 'OS'],
-        #['GBM_PD1_Zhao2019', 'PFS'],
         
         ['NSCLC_ICB_Ravi2023', 'OS'],
         ['NSCLC_ICB_Ravi2023', 'PFS'],
@@ -98,8 +123,9 @@ def load_survival_list(data_type):
         ['PanCancer_ICB_Li2023', 'PFS'],
         ['PanCancer_ICB_Li2023', 'OS'],
         
-        ['Colorectal_ICB_Thibaudin2023', 'PFS'],
-        ['Colorectal_ICB_Thibaudin2023', 'OS'],
+        # filtered by low exon coverage
+        #['Colorectal_ICB_Thibaudin2023', 'PFS'],
+        #['Colorectal_ICB_Thibaudin2023', 'OS'],
         
         ['CCRCC_ICB_Miao2018', 'PFS'],
         ['CCRCC_ICB_Miao2018', 'OS'],
@@ -112,7 +138,64 @@ def load_survival_list(data_type):
         ['SCLC_Placebo_Nabet2024', 'OS'],
         ['SCLC_Placebo_Nabet2024', 'PFS'],
         
+        ['Hepatocellular_ICB_Budhu2023', 'OS'],
+        ['Hepatocellular_ICB_Budhu2023', 'PFS'],
         
+        ['Esophageal_Durvalumab_Mamdani2021', 'RFS'],
+        
+        ['Urothelial_Atezolizumab_Snyder2017', 'PFS'],
+        ['Urothelial_Atezolizumab_Snyder2017', 'OS'],
+        
+        ['Melanoma_ACT_Barras2024', 'PFS'],
+        ['Melanoma_ACT_Barras2024', 'OS'],
+        
+        ['Melanoma_ACT_Barras2024.Post', 'PFS'],
+        ['Melanoma_ACT_Barras2024.Post', 'OS'],
+        
+        ['RCC_Avelumab+Axitinib_Motzer2020', 'PFS'],
+        ['RCC_Sunitinib_Motzer2020', 'PFS'],
+        
+        ['SCLC_Durvalumab_Roper2021', 'OS'],
+        
+        ['Urothelial_Atezo+Chemo_Hamidi2024-IMvigor130', 'OS'],
+        ['Urothelial_Atezolizumab_Hamidi2024-IMvigor130','OS'],
+        ['Urothelial_Chemotherapy_Hamidi2024-IMvigor130','OS'],
+    
+        ['Urothelial_Atezolizumab_Hamidi2024-IMvigor010','OS'],
+        ['Urothelial_Surveillance_Hamidi2024-IMvigor010','OS'],
+    
+        ['Urothelial_Atezolizumab_Hamidi2024-IMvigor210','OS'],
+    
+        ['Urothelial_Atezolizumab_Hamidi2024-IMvigor211','OS'],
+        ['Urothelial_Chemotherapy_Hamidi2024-IMvigor211','OS'],
+    
+        ['NSCLC_Atezolizumab_Patil2022-OAK','OS'],
+        ['NSCLC_Atezolizumab_Patil2022-OAK','PFS'],
+        
+        ['NSCLC_Atezolizumab_Patil2022-POPLAR','OS'],
+        ['NSCLC_Atezolizumab_Patil2022-POPLAR','PFS'],
+        
+        ['NSCLC_Docetaxel_Patil2022-OAK','OS'],
+        ['NSCLC_Docetaxel_Patil2022-OAK','PFS'],
+        
+        ['NSCLC_Docetaxel_Patil2022-POPLAR','OS'],
+        ['NSCLC_Docetaxel_Patil2022-POPLAR','PFS'],
+        
+        ['BiliaryTract_AtezoGemCis+Bev_Macarulla2024','OS'],
+        ['BiliaryTract_AtezoGemCis+Bev_Macarulla2024','PFS'],
+    
+        ['BiliaryTract_AtezoGemCis+Plb_Macarulla2024','OS'],
+        ['BiliaryTract_AtezoGemCis+Plb_Macarulla2024','PFS'],
+        
+        ['Urothelial_Atezolizumab_Powles2024','OS'],
+        ['Urothelial_Atezolizumab_Powles2024','DFS'],
+    
+        ['Urothelial_Observation_Powles2024','OS'],
+        ['Urothelial_Observation_Powles2024','DFS'],
+        
+        ['RCC_Atezo+Bev_Motzer2020-IMmotion151','PFS'],
+        ['RCC_Sunitinib_Motzer2020-IMmotion151','PFS'],
+    
         # partial data
         ['PanCancer_PD1_Prat2017', 'PFS'],
         
@@ -162,16 +245,21 @@ def load_response_list(data_type):
     
     ################################################################
     # with binary outcome only
+    fprefix = os.path.join(input_path, '*', 'Hepatocellular_PD1_Li2024')
+    lst.append(['Hepatocellular_PD1_Li2024', fprefix, 'response'])
+    
     fprefix = os.path.join(input_path, '*', 'Breast_Durvalumab+Olaparib_Pusztai2021')
     lst.append(['Breast_Durvalumab+Olaparib_Pusztai2021', fprefix, 'response'])
     
     fprefix = os.path.join(input_path, '*', 'Breast_Pembrolizumab_Wolf2022')
+    #lst.append(['Breast_Pembrolizumab_Wolf2022', fprefix, 'response'])
     
     for subtype in ['Basal', 'Luminal']:
         lst.append(['Breast_Pembrolizumab_Wolf2022.' + subtype, fprefix, 'response_' + subtype])
     
-    fprefix = os.path.join(input_path, '*', 'Esophageal_Atezolizumab_VanDenEnde2021')
-    lst.append(['Esophageal_Atezolizumab_VanDenEnde2021', fprefix, 'response'])
+    # filtered by low exon coverage
+    #fprefix = os.path.join(input_path, '*', 'Esophageal_Atezolizumab_VanDenEnde2021')
+    #lst.append(['Esophageal_Atezolizumab_VanDenEnde2021', fprefix, 'response'])
     
     fprefix = os.path.join(input_path, '*', 'HeadNeck_Pembrolizumab_Uppaluri2020')
     lst.append(['HeadNeck_Pembrolizumab_Uppaluri2020', fprefix, 'response'])
@@ -236,11 +324,23 @@ lst_RECIST = []
 def load_RECIST_list(data_type):
     lst = []
     
-    fprefix = os.path.join(input_path, '*', 'mGC_Pembrolizumab_Kim2018')
-    lst.append(['mGC_Pembrolizumab_Kim2018', fprefix, 'RECIST'])
+    # as primary endpoints
+    for title in [
+        'NSCLC_PD1_Hu2023',
+        'NSCLC_PD1_Yan2025',
+        'mGC_Pembrolizumab_Kim2018',
+        'PanCancer_Pembrolizumab_Yang2021',
+        'Colorectal_ICB_Thibaudin2023',
+        'Penile_Toripalimab_An2025',
+        'Pediatric_Atezolizumab_Nabbi2023',
+        ]:
+        fprefix = os.path.join(input_path, '*', title)
+        lst.append([title, fprefix, 'RECIST'])
     
-    fprefix = os.path.join(input_path, '*', 'PanCancer_Pembrolizumab_Yang2021')
-    lst.append(['PanCancer_Pembrolizumab_Yang2021', fprefix, 'RECIST'])
+    fprefix_template = os.path.join(input_path, '*', 'Melanoma_%s_Campbell2023')
+    for treatment in ['CTLA4-to-PD1', 'PD1-to-CTLA4', 'CTLA4']:
+        fprefix = fprefix_template % treatment
+        lst.append([os.path.basename(fprefix), fprefix, 'RECIST'])
     
     gz_postfix = re.compile('\.gz$')
     
@@ -269,8 +369,9 @@ def load_RECIST_list(data_type):
 
 
 
-def load_clinical_data_pairs(clinical, data, data_expression = None):
-    clinical = pandas.read_csv(clinical, sep='\t', index_col=0)
+
+def load_clinical_data_pairs(f, data, data_expression = None, purity_covariate = None):
+    clinical = pandas.read_csv(f, sep='\t', index_col=0)
     clinical.index = clinical.index.astype(str)
     
     flag_ICGC = os.path.dirname(data).find('ICGC') > 0
@@ -297,13 +398,45 @@ def load_clinical_data_pairs(clinical, data, data_expression = None):
     
     if flag is not None:
         data.columns = flag
-        data = data.groupby(data.columns, axis=1).median()
+        data = data.T.groupby(data.columns).median().T
         data = data.loc[(data == 0).mean(axis=1) < 1]
     
     common = clinical.index.intersection(data.columns)
     
+    flag_purity_covariate = False
+    
+    if purity_covariate is not None:
+        # correction pair: data, field name
+        if 'purity' in [v.lower() for v in clinical.columns]:
+            print('purity already exist in clinical covariates')
+        
+        else:
+            purity_f = '.'.join(f.split('.')[:-1]) + '.Purity.gz'
+            
+            if os.path.exists(purity_f):
+                print('use original purity values')
+                purity_covariate = pandas.read_csv(purity_f, sep='\t', index_col=0)['Purity']
+                purity_covariate.index = purity_covariate.index.astype(str)
+            
+            else:
+                purity_covariate, title = purity_covariate
+                
+                print('use computed purity values', purity_covariate)
+                purity_covariate = pandas.read_csv(purity_covariate, sep='\t', index_col=0)
+                purity_covariate = purity_covariate.loc[title]
+                
+            common = common.intersection(purity_covariate.index)
+            
+            flag_purity_covariate = True    
+    
     if data_expression is None:
-        return clinical.loc[common], data.loc[:, common]
+        clinical, data = clinical.loc[common], data.loc[:, common]
+        clinical = clinical.loc[:, clinical.abs().sum() > 0]
+        
+        if flag_purity_covariate:
+            clinical[purity_covariate.name] = purity_covariate.loc[common]
+        
+        return clinical, data
     
     else:
         data_expression = pandas.read_csv(data_expression, sep='\t', index_col=0)
@@ -319,17 +452,25 @@ def load_clinical_data_pairs(clinical, data, data_expression = None):
             flag = None
         
         if flag is not None:
-            data_expression = data_expression.groupby(flag, axis=1).median()
+            data_expression = data_expression.T.groupby(flag).median().T
             data_expression = data_expression.loc[(data_expression == 0).mean(axis=1) < 1]
         
         common = common.intersection(data_expression.columns)
         
-        return clinical.loc[common], data.loc[:, common], data_expression.loc[:, common]
+        clinical, data, data_expression = clinical.loc[common], data.loc[:, common], data_expression.loc[:, common]
+        clinical = clinical.loc[:, clinical.abs().sum() > 0]
+        
+        if flag_purity_covariate:
+            clinical[purity_covariate.name] = purity_covariate.loc[common]
+        
+        return clinical, data, data_expression
 
 
 
 
-def compute_survival_associations(flag_CTL_correction, best_threshold_margin, cnt_thres = 10):
+
+def compute_survival_associations(flag_CTL_correction, best_threshold_margin, cnt_thres = 10, purity_covariate = None):
+    # purity_covariate: postfix of background covariate estimated value
     inx, Nnode = int(sys.argv[1]), int(sys.argv[2])
     
     if len(lst_survival) != Nnode:
@@ -339,14 +480,28 @@ def compute_survival_associations(flag_CTL_correction, best_threshold_margin, cn
     title, clinical, data_input, data_expression, output = lst_survival[inx]
     print('process', title)
     
+    if purity_covariate is not None:
+        output += '.purity_corrected'
+        
+        f_template = '.'.join(data_input.replace('.gz', '').split('.')[:-1]) + '.%s.' + purity_covariate[0]
+        
+        fpurity = glob(f_template % 'TPM')
+        fpurity.extend(glob(f_template % 'expression'))
+        
+        if len(fpurity) == 0:
+            print('Cannot find purity covariate %s for %s' % (purity_covariate[0], data_input))
+            return
+        
+        assert len(fpurity) == 1
+        purity_covariate = [fpurity[0], purity_covariate[1]]
+    
     cmd_prefix = os.path.join(base_path, 'src', 'survival_associations.R')
     
     # always load all data, as there could be many modifications
     if flag_CTL_correction:
         # no expression file, just return
         if data_expression is None: return
-        
-        clinical, data, data_expression = load_clinical_data_pairs(clinical, data_input, data_expression)
+        clinical, data, data_expression = load_clinical_data_pairs(clinical, data_input, data_expression, purity_covariate = purity_covariate)
     
         output += '.CTL_corrected'
         
@@ -360,13 +515,18 @@ def compute_survival_associations(flag_CTL_correction, best_threshold_margin, cn
     
     else:
         # no need to load the gene expression part, which may undermine the sample number
-        clinical, data = load_clinical_data_pairs(clinical, data_input)
+        clinical, data = load_clinical_data_pairs(clinical, data_input, purity_covariate = purity_covariate)
     
     if clinical.shape[0] < cnt_thres:
         print('skip %s by low sample size %d.' % (os.path.basename(output), clinical.shape[0]))
         return
     
     #if os.path.exists(output): return
+    
+    # some fix here for special dataset
+    #if title == 'ORCA-IN.OS':
+    #    # after overlapping with expression, this will cause too few variations
+    #    clinical.drop('Stage', axis=1, inplace=True)
     
     # if is Mutation file, correct for base mutation burden
     if output.find('.Mutation.response') > 0:
@@ -398,22 +558,55 @@ def compute_survival_associations(flag_CTL_correction, best_threshold_margin, cn
     
     os.system(' '.join(cmd))
     
-    for postfix in ['data_temp', 'clinical']: os.remove(output + '.' + postfix)
+    if clinical.shape[1] > 2:
+        # has some factors, generate the clinical along survival effect
+        md5_prev = hashlib.md5(open(output + '.clinical','rb').read()).hexdigest()
+        
+        cmd = [os.path.join(base_path, 'src', 'coxph.R'), output + '.clinical', output + '.clinical']
+        os.system(' '.join(cmd))
+        
+        md5 = hashlib.md5(open(output + '.clinical','rb').read()).hexdigest()
+        if md5 == md5_prev:
+            print('delete clinical file for %s' % output)
+            os.remove(output + '.clinical')
+        
+    else:
+        os.remove(output + '.clinical')
+    
+    for postfix in ['data_temp']: os.remove(output + '.' + postfix)
 
 
 
 
-def compute_binary_response_associations(flag_CTL_correction):
+def compute_binary_response_associations(flag_CTL_correction, purity_covariate=None):
     # more complicated version, by logistic regression
     
     for title, response, data_input, data_expression, output in lst_response:
+        
+        if purity_covariate is not None:
+            output += '.purity_corrected'
+            
+            f_template = '.'.join(data_input.replace('.gz', '').split('.')[:-1]) + '.%s.' + purity_covariate[0]
+            
+            fpurity = glob(f_template % 'TPM')
+            fpurity.extend(glob(f_template % 'expression'))
+            
+            if len(fpurity) == 0:
+                print('Cannot find purity covariate %s for %s' % (purity_covariate[0], data_input))
+                return
+            
+            assert len(fpurity) == 1
+            purity_covariate = [fpurity[0], purity_covariate[1]]
         
         if flag_CTL_correction:
             output += '.CTL_corrected'
                 
             # no CTL expression for correction
-            if data_expression is None: return
-            response, data, data_expression = load_clinical_data_pairs(response, data_input, data_expression)
+            if data_expression is None:
+                print('Cannot find expression data for %s' % data_input)
+                return
+            
+            response, data, data_expression = load_clinical_data_pairs(response, data_input, data_expression, purity_covariate=purity_covariate)
                             
             if title.find('Mouse') >= 0:
                 CTL_set = ['CD8a', 'Cd8b1', 'Gzma', 'Gzmb', 'Prf1']
@@ -425,8 +618,9 @@ def compute_binary_response_associations(flag_CTL_correction):
             response['CTL'] = CTL
             
         else:
-            response, data = load_clinical_data_pairs(response, data_input)
-        
+            response, data = load_clinical_data_pairs(response, data_input, purity_covariate=purity_covariate)
+            
+            
         if output.find('.Mutation.response') > 0:
             response['mutation burden'] = numpy.log2(data.loc['mutation_burden'] + 1)
             data.drop('mutation_burden', inplace=True)
@@ -434,12 +628,31 @@ def compute_binary_response_associations(flag_CTL_correction):
         if output.find('.CNA.response') > 0:
             response['Aneuploidy'] = data.loc['Aneuploidy']
             data.drop('Aneuploidy', inplace=True)
+            
+        # has clinical cov
+        if response.shape[1] > 1:
+            response['Const'] = 1
+                
+            y = CytoSig.dataframe_to_array(response.iloc[:, 0].astype(float))
+            X = CytoSig.dataframe_to_array(response.iloc[:, 1:].astype(float))
+        
+            try:
+                _, _, z, p = data_significance.logit(X, y, 1e-5, 1, 1000, 1, 0)
+            except ArithmeticError:
+                sys.stderr.write('Clinical file only is even not regressable. Exit\n')
+                return
+                
+            result = pandas.DataFrame([z, p], index=['z', 'p'], columns=response.columns[1:]).transpose()
+            result.to_csv(output + '.clinical', sep='\t', index_label=False)
+                
+            response.drop('Const', axis=1, inplace=True)
+        
         
         print('process', title, response.shape[0], 'samples')
             
         # fill NA here to allow the computation
         data.fillna(0, inplace=True)
-            
+        
         if response.shape[1] == 1:
             print('only response is involved, use ranksum')
                 
@@ -475,30 +688,70 @@ def compute_binary_response_associations(flag_CTL_correction):
         stat['mean.value'] = data.loc[stat.index].mean(axis=1)
         stat['N'] = response.shape[0]
         stat['FDR'] = multipletests(stat['p'], method='fdr_bh')[1]
-        
+            
         stat.to_csv(output, sep='\t', index_label=False)
+        
+        if not flag_CTL_correction:
+            # binary outcome, add AUC
+            merge = []
+            for title, arr in data.iterrows():
+                if title in ['TIDE', 'TIDE.exclusion', 'CytoSig.TGFB1', 'Signature.TGFb', 'Aneuploidy']:
+                    arr = -arr
+                
+                fpr, tpr, _ = metrics.roc_curve(response, arr)
+                AUC = metrics.auc(fpr, tpr)
+                p = stats.mannwhitneyu(arr.loc[response], arr.loc[~response])[1]
+                
+                merge.append(pandas.Series([AUC, p], index=['AUC', 'p'], name=title))
+                #lst.append([title, metrics.auc(fpr, tpr), fpr, tpr])
+            
+            stat = pandas.concat(merge, axis=1, join='inner').T
+            stat['mean.value'] = data.loc[stat.index].mean(axis=1)
+            stat['N'] = response.shape[0]
+            stat['FDR'] = multipletests(stat['p'], method='fdr_bh')[1]
+                
+            stat.to_csv(output + '_AUC', sep='\t', index_label=False)
 
 
 
-
-def compute_RECIST_response_associations(flag_CTL_correction):
+def compute_RECIST_response_associations(flag_CTL_correction, cnt_thres = 10, purity_covariate=None):
     warnings.filterwarnings("error")
     
     for title, clinical, data_input, data_expression, output in lst_RECIST:
         print(title)
         
+        if purity_covariate is not None:
+            output += '.purity_corrected'
+            
+            f_template = '.'.join(data_input.replace('.gz', '').split('.')[:-1]) + '.%s.' + purity_covariate[0]
+        
+            fpurity = glob(f_template % 'TPM')
+            fpurity.extend(glob(f_template % 'expression'))
+        
+            if len(fpurity) == 0:
+                print('Cannot find purity covariate %s for %s' % (purity_covariate[0], data_input))
+                return
+            
+            assert len(fpurity) == 1
+            purity_covariate_i = [fpurity[0], purity_covariate[1]]
+        else:
+            purity_covariate_i = None
+    
         if flag_CTL_correction:
             # expression not existing, just jump
             if data_expression is None: continue
-            clinical, data, data_expression = load_clinical_data_pairs(clinical, data_input, data_expression)
+            clinical, data, data_expression = load_clinical_data_pairs(clinical, data_input, data_expression, purity_covariate=purity_covariate_i)
             output += '.CTL_corrected'
             
             CTL = data_expression.reindex(['CD8A', 'CD8B', 'GZMA', 'GZMB', 'PRF1']).dropna().median()
             clinical['CTL'] = CTL
         
         else:
-            clinical, data = load_clinical_data_pairs(clinical, data_input)
-            
+            clinical, data = load_clinical_data_pairs(clinical, data_input, purity_covariate=purity_covariate_i)
+        
+        # jump too few samples
+        if clinical.shape[0] < cnt_thres: continue
+        
         # if is mutation
         if output.find('.Mutation.response') > 0:
             clinical['mutation burden'] = numpy.log2(data.loc['mutation_burden'] + 1)
@@ -551,6 +804,7 @@ def compute_RECIST_response_associations(flag_CTL_correction):
         stat['FDR'] = multipletests(stat['p'], method='fdr_bh')[1]
         
         stat.to_csv(output, sep='\t', index_label=False)
+        print(stat.shape)
 
 
 

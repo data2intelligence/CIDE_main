@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 library(tools)
-source("survival_util.R")
+source(file.path("~/workspace/BioAnalysis/R/", "survival_util.R"))
 
 NSTEP = 100
 
@@ -70,7 +70,7 @@ for (i in 1:N)
   }
   
   fid = features[i]
-  #if(!(tail(strsplit(fid, '@')[[1]], n=1) %in% c('DDX3Y', 'FIBP', 'FCMR'))) next
+  #if(!(tail(strsplit(fid, '@')[[1]], n=1) %in% c('AOAH', 'CR1L', 'COLQ', 'LY86', 'IFNG', 'ADAMTS7'))) next
   
   # part 1: overall regression
   arr = B[,N_B] = data[,i]
